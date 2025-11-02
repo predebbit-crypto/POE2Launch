@@ -42,7 +42,8 @@ if errorlevel 1 (
 
 echo.
 echo [2/4] Building launcher executable...
-pyinstaller --onefile --noconsole --name "POE2_Launcher" --icon=NONE poe2_launcher.py
+echo Note: Building with console window enabled for debugging
+pyinstaller --onefile --name "POE2_Launcher" --icon=NONE poe2_launcher.py
 if errorlevel 1 (
     echo ERROR: Failed to build launcher
     pause

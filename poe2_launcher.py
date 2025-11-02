@@ -7,6 +7,9 @@ import json
 import os
 import sys
 import time
+import traceback
+import logging
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -14,6 +17,29 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+
+
+# 로그 설정
+def setup_logging():
+    """로그 파일 설정"""
+    log_dir = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        log_dir = os.path.dirname(sys.executable)
+
+    log_file = os.path.join(log_dir, 'poe2_launcher.log')
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file, encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    return log_file
+
+
+LOG_FILE = setup_logging()
 
 
 class POE2Launcher:
@@ -25,11 +51,17 @@ class POE2Launcher:
 
     def load_config(self, config_path):
         """설정 파일 로드"""
+        logging.info(f"설정 파일 로드 시도: {config_path}")
+
         if not os.path.exists(config_path):
-            print(f"❌ 설정 파일을 찾을 수 없습니다: {config_path}")
+            msg = f"❌ 설정 파일을 찾을 수 없습니다: {config_path}"
+            logging.error(msg)
+            print(msg)
             print(f"📝 config.json 파일을 생성하고 계정 정보를 입력해주세요.")
             print(f"\n예시:")
             print(f'{{\n  "username": "your_username",\n  "password": "your_password"\n}}')
+            print(f"\n💡 POE2_Setup.exe를 실행하여 쉽게 설정할 수 있습니다.")
+            input("\n계속하려면 Enter를 누르세요...")
             sys.exit(1)
 
         try:
@@ -37,17 +69,31 @@ class POE2Launcher:
                 config = json.load(f)
 
             if 'username' not in config or 'password' not in config:
-                print("❌ 설정 파일에 username 또는 password가 없습니다.")
+                msg = "❌ 설정 파일에 username 또는 password가 없습니다."
+                logging.error(msg)
+                print(msg)
+                input("\n계속하려면 Enter를 누르세요...")
                 sys.exit(1)
 
+            logging.info("설정 파일 로드 성공")
             return config
         except json.JSONDecodeError as e:
-            print(f"❌ 설정 파일 파싱 오류: {e}")
+            msg = f"❌ 설정 파일 파싱 오류: {e}"
+            logging.error(msg)
+            print(msg)
+            input("\n계속하려면 Enter를 누르세요...")
+            sys.exit(1)
+        except Exception as e:
+            msg = f"❌ 설정 파일 읽기 오류: {e}"
+            logging.error(msg)
+            print(msg)
+            input("\n계속하려면 Enter를 누르세요...")
             sys.exit(1)
 
     def setup_driver(self):
         """Chrome 드라이버 설정"""
         print("🔧 브라우저 설정 중...")
+        logging.info("Chrome 드라이버 설정 시작")
 
         chrome_options = Options()
         # 브라우저를 보이게 설정
@@ -62,7 +108,12 @@ class POE2Launcher:
         chrome_options.add_experimental_option('useAutomationExtension', False)
 
         try:
+            print("📥 Chrome WebDriver 다운로드 중... (처음 실행 시 시간이 걸릴 수 있습니다)")
+            logging.info("ChromeDriverManager로 드라이버 설치 시도")
             service = Service(ChromeDriverManager().install())
+
+            print("🌐 Chrome 브라우저 시작 중...")
+            logging.info("Chrome 브라우저 시작")
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             self.wait = WebDriverWait(self.driver, 20)
 
@@ -70,8 +121,21 @@ class POE2Launcher:
             self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
             print("✅ 브라우저 설정 완료")
+            logging.info("Chrome 브라우저 설정 완료")
         except Exception as e:
-            print(f"❌ 브라우저 설정 실패: {e}")
+            error_msg = f"❌ 브라우저 설정 실패: {e}"
+            print(error_msg)
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
+
+            print("\n💡 문제 해결 방법:")
+            print("1. Chrome 브라우저가 설치되어 있는지 확인하세요")
+            print("2. Chrome을 최신 버전으로 업데이트하세요")
+            print("3. 인터넷 연결을 확인하세요 (WebDriver 다운로드 필요)")
+            print("4. 백신 프로그램이 차단하고 있는지 확인하세요")
+            print(f"\n📝 자세한 로그는 다음 파일을 확인하세요: {LOG_FILE}")
+
+            input("\n계속하려면 Enter를 누르세요...")
             sys.exit(1)
 
     def open_website(self):
@@ -234,7 +298,9 @@ class POE2Launcher:
         try:
             print("=" * 50)
             print("🎯 POE2 Auto Login Launcher 시작")
+            print(f"📝 로그 파일: {LOG_FILE}")
             print("=" * 50)
+            logging.info("POE2 Launcher 시작")
 
             self.setup_driver()
             self.open_website()
@@ -246,6 +312,7 @@ class POE2Launcher:
             print("게임 런처가 실행될 때까지 브라우저를 유지합니다.")
             print("종료하려면 브라우저를 닫거나 Ctrl+C를 누르세요.")
             print("=" * 50)
+            logging.info("런처 작업 완료")
 
             # 브라우저 유지 (사용자가 수동으로 닫을 때까지)
             while True:
@@ -253,8 +320,14 @@ class POE2Launcher:
 
         except KeyboardInterrupt:
             print("\n\n⏹️  사용자가 중단했습니다.")
+            logging.info("사용자가 프로그램 중단")
         except Exception as e:
-            print(f"\n❌ 예기치 않은 오류: {e}")
+            error_msg = f"\n❌ 예기치 않은 오류: {e}"
+            print(error_msg)
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
+            print(f"\n📝 자세한 로그는 다음 파일을 확인하세요: {LOG_FILE}")
+            input("\n계속하려면 Enter를 누르세요...")
         finally:
             self.cleanup()
 
@@ -271,18 +344,35 @@ class POE2Launcher:
 
 def main():
     """메인 함수"""
-    # 실행 파일과 같은 디렉토리에서 config.json 찾기
-    if getattr(sys, 'frozen', False):
-        # PyInstaller로 빌드된 경우
-        application_path = os.path.dirname(sys.executable)
-    else:
-        # 일반 Python 스크립트로 실행된 경우
-        application_path = os.path.dirname(os.path.abspath(__file__))
+    try:
+        print("\n" + "=" * 60)
+        print("  POE2 Auto Login Launcher")
+        print("  Path of Exile 2 다음 게임 자동 로그인 런처")
+        print("=" * 60 + "\n")
 
-    config_path = os.path.join(application_path, 'config.json')
+        # 실행 파일과 같은 디렉토리에서 config.json 찾기
+        if getattr(sys, 'frozen', False):
+            # PyInstaller로 빌드된 경우
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # 일반 Python 스크립트로 실행된 경우
+            application_path = os.path.dirname(os.path.abspath(__file__))
 
-    launcher = POE2Launcher(config_path)
-    launcher.run()
+        config_path = os.path.join(application_path, 'config.json')
+        logging.info(f"실행 경로: {application_path}")
+        logging.info(f"설정 파일 경로: {config_path}")
+
+        launcher = POE2Launcher(config_path)
+        launcher.run()
+
+    except Exception as e:
+        error_msg = f"프로그램 시작 실패: {e}"
+        print(f"\n❌ {error_msg}")
+        logging.error(error_msg)
+        logging.error(traceback.format_exc())
+        print(f"\n📝 자세한 로그는 다음 파일을 확인하세요: {LOG_FILE}")
+        input("\n계속하려면 Enter를 누르세요...")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -300,6 +300,24 @@ pip --version
    python poe2_launcher.py
    ```
 
+### ❓ POE2_Launcher.exe 실행 시 아무 반응이 없는 경우
+
+**원인:** 여러 가지 가능성 (config 파일 없음, Chrome 문제, 백신 차단 등)
+
+**해결 방법:**
+1. **최신 버전으로 다시 빌드** (중요!)
+   ```cmd
+   build.bat
+   ```
+   새 버전은 콘솔 창이 표시되어 오류 메시지를 볼 수 있습니다.
+
+2. **로그 파일 확인**
+   - `dist\poe2_launcher.log` 파일 열기
+   - 오류 메시지 확인
+
+3. **상세 가이드 참고**
+   - 📖 [TROUBLESHOOT_NO_RESPONSE.md](TROUBLESHOOT_NO_RESPONSE.md) 문서 확인
+
 ---
 
 ## 보안 주의사항 🔒
