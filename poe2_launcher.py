@@ -221,8 +221,48 @@ class POE2Launcher:
                 print("🪟 로그인 팝업 창으로 전환")
                 logging.info("팝업 창으로 전환 성공")
 
-            # 로그인 입력 필드가 나타날 때까지 대기
+            # 팝업에서 '확인' 버튼 먼저 클릭 (로그인 입력 필드가 나타나기 전)
             time.sleep(2)
+            print("🔍 확인 버튼 찾기...")
+            logging.info("확인 버튼 찾기 시작")
+
+            confirm_selectors = [
+                "//button[contains(text(), '확인')]",
+                "//a[contains(text(), '확인')]",
+                "//button[contains(text(), 'OK')]",
+                "//button[contains(text(), 'ok')]",
+                "//input[@type='button' and contains(@value, '확인')]",
+                "//button[@type='button' and contains(text(), '확인')]",
+                "//button[contains(@class, 'confirm')]",
+                "//button[contains(@class, 'btn_confirm')]",
+                "//a[contains(@class, 'confirm')]",
+                "//div[contains(@class, 'confirm') and contains(text(), '확인')]",
+                "//button[@id='confirmBtn']",
+                "//button[@id='confirm']"
+            ]
+
+            confirm_clicked = False
+            for selector in confirm_selectors:
+                try:
+                    logging.info(f"확인 버튼 시도: {selector}")
+                    confirm_btn = self.driver.find_element(By.XPATH, selector)
+                    # JavaScript로 클릭
+                    self.driver.execute_script("arguments[0].click();", confirm_btn)
+                    print("✅ 확인 버튼 클릭 완료")
+                    logging.info(f"확인 버튼 클릭 성공 - 선택자: {selector}")
+                    confirm_clicked = True
+                    break
+                except Exception as e:
+                    logging.debug(f"확인 버튼 시도 실패: {selector} - {e}")
+                    continue
+
+            if confirm_clicked:
+                print("⏳ 로그인 입력 필드 로드 대기 중...")
+                time.sleep(2)
+            else:
+                print("⚠️  확인 버튼을 찾을 수 없습니다. 이미 로그인 화면일 수 있습니다.")
+                logging.warning("확인 버튼을 찾을 수 없음, 바로 로그인 진행")
+                time.sleep(1)
 
             # 아이디 입력
             id_input_selectors = [
