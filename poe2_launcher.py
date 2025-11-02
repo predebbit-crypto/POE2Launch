@@ -195,145 +195,227 @@ class POE2Launcher:
             sys.exit(1)
 
     def login(self):
-        """자동 로그인"""
+        """자동 로그인 (게임 시작 버튼 클릭 후 나타나는 로그인 창에서)"""
         print("🔐 로그인 시도 중...")
+        logging.info("로그인 프로세스 시작")
 
         try:
-            # 로그인 버튼 찾기 및 클릭 (다음 계정으로 로그인)
-            # 실제 웹사이트 구조에 따라 선택자를 조정해야 할 수 있습니다
+            # 로그인 창/팝업으로 전환 (iframe, 새 창, 팝업 등 확인)
+            # 먼저 iframe이 있는지 확인
+            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+            if iframes:
+                logging.info(f"iframe 발견: {len(iframes)}개")
+                # 첫 번째 iframe으로 전환 시도
+                try:
+                    self.driver.switch_to.frame(iframes[0])
+                    print("📋 로그인 프레임으로 전환")
+                    logging.info("iframe으로 전환 성공")
+                except Exception as e:
+                    logging.warning(f"iframe 전환 실패: {e}")
 
-            # 로그인 버튼 클릭 (여러 가능한 선택자 시도)
-            login_button_selectors = [
-                "//a[contains(text(), '로그인')]",
-                "//button[contains(text(), '로그인')]",
-                "//a[contains(@class, 'login')]",
-                "//button[contains(@class, 'login')]",
-                "//a[@href*='login']"
+            # 팝업 창이 있는지 확인
+            window_handles = self.driver.window_handles
+            if len(window_handles) > 1:
+                logging.info(f"팝업 창 발견: {len(window_handles)}개")
+                self.driver.switch_to.window(window_handles[-1])
+                print("🪟 로그인 팝업 창으로 전환")
+                logging.info("팝업 창으로 전환 성공")
+
+            # 로그인 입력 필드가 나타날 때까지 대기
+            time.sleep(2)
+
+            # 아이디 입력
+            id_input_selectors = [
+                "//input[@name='id']",
+                "//input[@id='id']",
+                "//input[@name='username']",
+                "//input[@id='username']",
+                "//input[@type='text']",
+                "//input[@placeholder*='아이디']",
+                "//input[@placeholder*='ID']",
+                "//input[contains(@class, 'input_id')]",
+                "//input[contains(@class, 'tf_id')]"
             ]
 
-            login_clicked = False
-            for selector in login_button_selectors:
+            id_entered = False
+            for selector in id_input_selectors:
                 try:
-                    login_btn = self.wait.until(
-                        EC.element_to_be_clickable((By.XPATH, selector))
+                    logging.info(f"아이디 입력 시도: {selector}")
+                    id_input = self.wait.until(
+                        EC.presence_of_element_located((By.XPATH, selector))
                     )
-                    login_btn.click()
-                    print("✅ 로그인 버튼 클릭")
-                    login_clicked = True
+                    id_input.clear()
+                    id_input.send_keys(self.config['username'])
+                    print("✅ 아이디 입력 완료")
+                    logging.info("아이디 입력 성공")
+                    id_entered = True
                     break
-                except:
+                except Exception as e:
+                    logging.debug(f"아이디 입력 실패: {selector} - {e}")
                     continue
 
-            if not login_clicked:
-                print("⚠️  로그인 버튼을 찾을 수 없습니다. 이미 로그인되어 있을 수 있습니다.")
-            else:
-                time.sleep(2)
+            if not id_entered:
+                print("⚠️  아이디 입력란을 찾을 수 없습니다.")
+                logging.warning("아이디 입력란을 찾을 수 없음")
 
-                # 다음 로그인 페이지로 이동했을 경우
-                # ID 입력
-                id_input_selectors = [
-                    "//input[@name='id']",
-                    "//input[@id='id']",
-                    "//input[@type='text']",
-                    "//input[@placeholder*='아이디']"
-                ]
+            time.sleep(1)
 
-                for selector in id_input_selectors:
-                    try:
-                        id_input = self.wait.until(
-                            EC.presence_of_element_located((By.XPATH, selector))
-                        )
-                        id_input.clear()
-                        id_input.send_keys(self.config['username'])
-                        print("✅ 아이디 입력 완료")
-                        break
-                    except:
-                        continue
+            # 비밀번호 입력
+            pw_input_selectors = [
+                "//input[@name='pw']",
+                "//input[@name='password']",
+                "//input[@id='password']",
+                "//input[@id='pw']",
+                "//input[@type='password']",
+                "//input[@placeholder*='비밀번호']",
+                "//input[@placeholder*='Password']",
+                "//input[contains(@class, 'input_pw')]",
+                "//input[contains(@class, 'tf_pw')]"
+            ]
 
-                # 비밀번호 입력
-                pw_input_selectors = [
-                    "//input[@name='pw']",
-                    "//input[@name='password']",
-                    "//input[@type='password']",
-                    "//input[@placeholder*='비밀번호']"
-                ]
+            pw_entered = False
+            for selector in pw_input_selectors:
+                try:
+                    logging.info(f"비밀번호 입력 시도: {selector}")
+                    pw_input = self.driver.find_element(By.XPATH, selector)
+                    pw_input.clear()
+                    pw_input.send_keys(self.config['password'])
+                    print("✅ 비밀번호 입력 완료")
+                    logging.info("비밀번호 입력 성공")
+                    pw_entered = True
+                    break
+                except Exception as e:
+                    logging.debug(f"비밀번호 입력 실패: {selector} - {e}")
+                    continue
 
-                for selector in pw_input_selectors:
-                    try:
-                        pw_input = self.driver.find_element(By.XPATH, selector)
-                        pw_input.clear()
-                        pw_input.send_keys(self.config['password'])
-                        print("✅ 비밀번호 입력 완료")
-                        break
-                    except:
-                        continue
+            if not pw_entered:
+                print("⚠️  비밀번호 입력란을 찾을 수 없습니다.")
+                logging.warning("비밀번호 입력란을 찾을 수 없음")
 
-                # 로그인 버튼 클릭
-                submit_selectors = [
-                    "//button[@type='submit']",
-                    "//button[contains(text(), '로그인')]",
-                    "//a[contains(text(), '로그인')]",
-                    "//input[@type='submit']"
-                ]
+            time.sleep(1)
 
-                for selector in submit_selectors:
-                    try:
-                        submit_btn = self.driver.find_element(By.XPATH, selector)
-                        submit_btn.click()
-                        print("✅ 로그인 제출")
-                        break
-                    except:
-                        continue
+            # 로그인 버튼 클릭
+            submit_selectors = [
+                "//button[@type='submit']",
+                "//button[contains(text(), '로그인')]",
+                "//a[contains(text(), '로그인')]",
+                "//input[@type='submit']",
+                "//button[contains(@class, 'btn_login')]",
+                "//a[contains(@class, 'btn_login')]",
+                "//button[@id='loginBtn']",
+                "//input[@value='로그인']"
+            ]
 
-                # 로그인 완료 대기
-                time.sleep(5)
+            submit_clicked = False
+            for selector in submit_selectors:
+                try:
+                    logging.info(f"로그인 버튼 클릭 시도: {selector}")
+                    submit_btn = self.driver.find_element(By.XPATH, selector)
+                    submit_btn.click()
+                    print("✅ 로그인 버튼 클릭")
+                    logging.info("로그인 버튼 클릭 성공")
+                    submit_clicked = True
+                    break
+                except Exception as e:
+                    logging.debug(f"로그인 버튼 클릭 실패: {selector} - {e}")
+                    continue
+
+            if not submit_clicked:
+                print("⚠️  로그인 버튼을 찾을 수 없습니다. Enter 키를 시도합니다.")
+                logging.warning("로그인 버튼을 찾을 수 없음, Enter 키 시도")
+                try:
+                    # Enter 키로 제출 시도
+                    from selenium.webdriver.common.keys import Keys
+                    pw_input = self.driver.find_element(By.XPATH, pw_input_selectors[0])
+                    pw_input.send_keys(Keys.RETURN)
+                    print("✅ Enter 키로 로그인 제출")
+                    logging.info("Enter 키로 로그인 제출 성공")
+                except Exception as e:
+                    logging.error(f"Enter 키 제출 실패: {e}")
+
+            # 로그인 완료 대기
+            print("⏳ 로그인 처리 대기 중...")
+            logging.info("로그인 처리 대기")
+            time.sleep(5)
+
+            # 메인 창으로 돌아가기 (팝업이었다면)
+            if len(self.driver.window_handles) > 1:
+                self.driver.switch_to.window(self.driver.window_handles[0])
+                print("🏠 메인 창으로 복귀")
+                logging.info("메인 창으로 복귀")
 
             print("✅ 로그인 완료")
+            logging.info("로그인 프로세스 완료")
 
         except Exception as e:
-            print(f"❌ 로그인 실패: {e}")
+            error_msg = f"❌ 로그인 실패: {e}"
+            print(error_msg)
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
             print("⚠️  수동으로 로그인해주세요. 30초 대기합니다...")
             time.sleep(30)
 
     def click_game_start(self):
         """게임 시작 버튼 클릭"""
         print("🎮 게임 시작 버튼 찾기...")
+        logging.info("게임 시작 버튼 찾기 시작")
 
         try:
+            # 페이지 로드 대기
+            time.sleep(2)
+
             # 게임 시작 버튼 찾기 (여러 가능한 선택자 시도)
             game_start_selectors = [
                 "//button[contains(text(), '게임시작')]",
                 "//a[contains(text(), '게임시작')]",
+                "//button[contains(text(), '게임 시작')]",
+                "//a[contains(text(), '게임 시작')]",
                 "//button[contains(@class, 'game-start')]",
                 "//a[contains(@class, 'game-start')]",
                 "//div[contains(text(), '게임시작')]",
                 "//button[contains(text(), 'PLAY')]",
-                "//a[contains(text(), 'PLAY')]"
+                "//a[contains(text(), 'PLAY')]",
+                "//button[contains(text(), 'Play')]",
+                "//a[contains(text(), 'Play')]"
             ]
 
             game_started = False
             for selector in game_start_selectors:
                 try:
+                    logging.info(f"선택자 시도: {selector}")
                     game_start_btn = self.wait.until(
                         EC.element_to_be_clickable((By.XPATH, selector))
                     )
                     game_start_btn.click()
                     print("✅ 게임 시작 버튼 클릭 완료")
+                    logging.info("게임 시작 버튼 클릭 성공")
                     game_started = True
                     break
-                except:
+                except Exception as e:
+                    logging.debug(f"선택자 실패: {selector} - {e}")
                     continue
 
             if not game_started:
                 print("⚠️  게임 시작 버튼을 찾을 수 없습니다.")
                 print("💡 화면 왼쪽의 게임 시작 버튼을 수동으로 클릭해주세요.")
-
-            # 게임 런처 실행 대기
-            time.sleep(5)
+                logging.warning("게임 시작 버튼을 찾을 수 없음")
+                # 수동 클릭을 위해 더 오래 대기
+                print("⏳ 수동으로 클릭할 시간 - 30초 대기 중...")
+                time.sleep(30)
+            else:
+                # 로그인 창이 나타날 때까지 대기
+                print("⏳ 로그인 창 로드 대기 중...")
+                logging.info("로그인 창 로드 대기")
+                time.sleep(3)
 
         except Exception as e:
-            print(f"❌ 게임 시작 버튼 클릭 실패: {e}")
+            error_msg = f"❌ 게임 시작 버튼 클릭 실패: {e}"
+            print(error_msg)
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
             print("💡 화면 왼쪽의 게임 시작 버튼을 수동으로 클릭해주세요.")
+            print("⏳ 수동으로 클릭할 시간 - 30초 대기 중...")
+            time.sleep(30)
 
     def run(self):
         """런처 실행"""
@@ -346,8 +428,8 @@ class POE2Launcher:
 
             self.setup_driver()
             self.open_website()
-            self.login()
-            self.click_game_start()
+            self.click_game_start()  # 먼저 게임 시작 버튼 클릭
+            self.login()  # 그 다음 로그인 창에서 로그인
 
             print("\n" + "=" * 50)
             print("✨ 런처 작업 완료!")
