@@ -18,7 +18,8 @@
 - ✅ **다음 계정**: Path of Exile 2 게임에 가입된 다음 계정
 - ✅ **Python 3.8 이상** (빌드 시에만 필요)
   - [Python 다운로드](https://www.python.org/downloads/)
-  - 설치 시 "Add Python to PATH" 옵션 체크!
+  - ⚠️ 설치 시 **"Add Python to PATH"** 옵션 반드시 체크!
+  - 📖 [자세한 Python 설치 가이드](INSTALL_PYTHON.md)
 
 ---
 
@@ -215,6 +216,25 @@ dist/
 ---
 
 ## 문제 해결
+
+### ❓ "pip은(는) 내부 또는 외부 명령이 아닙니다" 오류
+
+**원인:** Python이 설치되지 않았거나 PATH에 추가되지 않음
+
+**해결 방법:**
+1. 📖 **[INSTALL_PYTHON.md](INSTALL_PYTHON.md)** 가이드를 참고하여 Python 설치
+2. Python 설치 시 **"Add Python to PATH"** 옵션 반드시 체크!
+3. 설치 후 **명령 프롬프트를 새로 열기** (기존 창 닫고 다시 열기)
+4. `python --version` 명령으로 설치 확인
+5. `build.bat` 다시 실행
+
+**빠른 확인:**
+```cmd
+python --version
+pip --version
+```
+
+둘 다 정상적으로 버전이 출력되어야 합니다.
 
 ### ❓ "config.json을 찾을 수 없습니다" 오류
 

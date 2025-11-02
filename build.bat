@@ -5,7 +5,34 @@ echo POE2 Auto Login Launcher Builder
 echo ================================
 echo.
 
-echo [1/3] Installing dependencies...
+REM Check if Python is installed
+echo [0/4] Checking Python installation...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo ========================================
+    echo ERROR: Python is not installed!
+    echo ========================================
+    echo.
+    echo Python is required to build this project.
+    echo.
+    echo Please follow these steps:
+    echo 1. Download Python from: https://www.python.org/downloads/
+    echo 2. Run the installer
+    echo 3. IMPORTANT: Check "Add Python to PATH" during installation!
+    echo 4. Restart your command prompt
+    echo 5. Run build.bat again
+    echo.
+    echo ========================================
+    pause
+    exit /b 1
+)
+
+python --version
+echo Python found!
+echo.
+
+echo [1/4] Installing dependencies...
 pip install -r requirements.txt
 if errorlevel 1 (
     echo ERROR: Failed to install dependencies
