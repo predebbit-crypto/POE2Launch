@@ -362,51 +362,135 @@ class POE2Launcher:
 
         try:
             # 페이지 로드 대기
-            time.sleep(2)
+            time.sleep(3)
 
-            # 게임 시작 버튼 찾기 (여러 가능한 선택자 시도)
-            game_start_selectors = [
-                "//button[contains(text(), '게임시작')]",
-                "//a[contains(text(), '게임시작')]",
-                "//button[contains(text(), '게임 시작')]",
-                "//a[contains(text(), '게임 시작')]",
-                "//button[contains(@class, 'game-start')]",
-                "//a[contains(@class, 'game-start')]",
-                "//div[contains(text(), '게임시작')]",
-                "//button[contains(text(), 'PLAY')]",
-                "//a[contains(text(), 'PLAY')]",
-                "//button[contains(text(), 'Play')]",
-                "//a[contains(text(), 'Play')]"
-            ]
+            # 먼저 JavaScript로 "게임시작" 텍스트를 포함한 모든 요소 찾기
+            print("🔍 페이지의 모든 요소 스캔 중...")
+            logging.info("JavaScript로 게임시작 버튼 검색")
 
-            game_started = False
-            for selector in game_start_selectors:
-                try:
-                    logging.info(f"선택자 시도: {selector}")
-                    game_start_btn = self.wait.until(
-                        EC.element_to_be_clickable((By.XPATH, selector))
-                    )
-                    game_start_btn.click()
-                    print("✅ 게임 시작 버튼 클릭 완료")
-                    logging.info("게임 시작 버튼 클릭 성공")
-                    game_started = True
-                    break
-                except Exception as e:
-                    logging.debug(f"선택자 실패: {selector} - {e}")
-                    continue
+            # JavaScript로 모든 요소에서 "게임시작" 또는 "게임 시작" 텍스트 찾기
+            script = """
+            function findGameStartButton() {
+                const keywords = ['게임시작', '게임 시작', 'PLAY', 'Play', 'play'];
+                const allElements = document.querySelectorAll('*');
 
-            if not game_started:
-                print("⚠️  게임 시작 버튼을 찾을 수 없습니다.")
-                print("💡 화면 왼쪽의 게임 시작 버튼을 수동으로 클릭해주세요.")
-                logging.warning("게임 시작 버튼을 찾을 수 없음")
-                # 수동 클릭을 위해 더 오래 대기
-                print("⏳ 수동으로 클릭할 시간 - 30초 대기 중...")
-                time.sleep(30)
+                for (let element of allElements) {
+                    const text = element.textContent || element.innerText || '';
+                    const trimmedText = text.trim();
+
+                    // 텍스트가 키워드와 정확히 일치하거나 포함하는지 확인
+                    for (let keyword of keywords) {
+                        if (trimmedText === keyword ||
+                            (trimmedText.length < 20 && trimmedText.includes(keyword))) {
+                            // 클릭 가능한 요소인지 확인 (a, button, div with onclick 등)
+                            if (element.tagName === 'A' ||
+                                element.tagName === 'BUTTON' ||
+                                element.onclick ||
+                                element.getAttribute('onclick') ||
+                                window.getComputedStyle(element).cursor === 'pointer') {
+                                return element;
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+            return findGameStartButton();
+            """
+
+            game_start_element = self.driver.execute_script(script)
+
+            if game_start_element:
+                print("✅ JavaScript로 게임 시작 버튼 발견")
+                logging.info("JavaScript로 게임 시작 버튼 찾기 성공")
+                # JavaScript로 직접 클릭
+                self.driver.execute_script("arguments[0].click();", game_start_element)
+                print("✅ 게임 시작 버튼 클릭 완료")
+                logging.info("게임 시작 버튼 클릭 성공")
+                game_started = True
             else:
-                # 로그인 창이 나타날 때까지 대기
-                print("⏳ 로그인 창 로드 대기 중...")
-                logging.info("로그인 창 로드 대기")
-                time.sleep(3)
+                # JavaScript로 못 찾으면 기존 선택자들 시도
+                print("🔄 XPath 선택자로 재시도...")
+                logging.info("XPath 선택자로 버튼 찾기 시도")
+
+                # 게임 시작 버튼 찾기 (여러 가능한 선택자 시도)
+                game_start_selectors = [
+                    # href="javascript:void(0);" 를 가진 링크
+                    "//a[@href='javascript:void(0);' and contains(text(), '게임시작')]",
+                    "//a[@href='javascript:void(0);' and contains(text(), '게임 시작')]",
+                    "//a[@href='javascript:void(0);']//text()[contains(., '게임시작')]/..",
+                    "//a[contains(@href, 'javascript:') and contains(text(), '게임시작')]",
+                    "//a[contains(@href, 'void') and contains(text(), '게임시작')]",
+
+                    # CSS 클래스나 ID로 찾기
+                    "//a[contains(@class, 'game') and contains(@class, 'start')]",
+                    "//a[contains(@id, 'game') and contains(@id, 'start')]",
+                    "//button[contains(@class, 'game') and contains(@class, 'start')]",
+
+                    # 텍스트로 찾기 (대소문자 구분 없이)
+                    "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '게임시작')]",
+
+                    # 기본 선택자들
+                    "//button[contains(text(), '게임시작')]",
+                    "//a[contains(text(), '게임시작')]",
+                    "//button[contains(text(), '게임 시작')]",
+                    "//a[contains(text(), '게임 시작')]",
+                    "//button[contains(@class, 'game-start')]",
+                    "//a[contains(@class, 'game-start')]",
+                    "//div[contains(text(), '게임시작')]",
+                    "//span[contains(text(), '게임시작')]",
+                    "//button[contains(text(), 'PLAY')]",
+                    "//a[contains(text(), 'PLAY')]",
+                    "//button[contains(text(), 'Play')]",
+                    "//a[contains(text(), 'Play')]"
+                ]
+
+                game_started = False
+                for selector in game_start_selectors:
+                    try:
+                        logging.info(f"선택자 시도: {selector}")
+                        game_start_btn = self.wait.until(
+                            EC.element_to_be_clickable((By.XPATH, selector))
+                        )
+                        # JavaScript로 클릭 (일반 클릭이 안 될 수 있으므로)
+                        self.driver.execute_script("arguments[0].click();", game_start_btn)
+                        print("✅ 게임 시작 버튼 클릭 완료")
+                        logging.info(f"게임 시작 버튼 클릭 성공 - 선택자: {selector}")
+                        game_started = True
+                        break
+                    except Exception as e:
+                        logging.debug(f"선택자 실패: {selector} - {e}")
+                        continue
+
+                if not game_started:
+                    print("⚠️  게임 시작 버튼을 찾을 수 없습니다.")
+                    print("💡 화면 왼쪽의 게임 시작 버튼을 수동으로 클릭해주세요.")
+                    logging.warning("게임 시작 버튼을 찾을 수 없음")
+
+                    # 디버깅을 위해 페이지의 모든 링크 로그
+                    try:
+                        all_links = self.driver.find_elements(By.TAG_NAME, "a")
+                        logging.info(f"페이지에서 찾은 총 링크 수: {len(all_links)}")
+                        for i, link in enumerate(all_links[:10]):  # 처음 10개만
+                            try:
+                                text = link.text.strip()
+                                href = link.get_attribute('href')
+                                if text or 'void' in str(href):
+                                    logging.info(f"링크 #{i+1}: 텍스트='{text}', href='{href}'")
+                            except:
+                                pass
+                    except Exception as e:
+                        logging.error(f"링크 디버깅 실패: {e}")
+
+                    # 수동 클릭을 위해 더 오래 대기
+                    print("⏳ 수동으로 클릭할 시간 - 30초 대기 중...")
+                    time.sleep(30)
+                    return
+
+            # 로그인 창이 나타날 때까지 대기
+            print("⏳ 로그인 창 로드 대기 중...")
+            logging.info("로그인 창 로드 대기")
+            time.sleep(3)
 
         except Exception as e:
             error_msg = f"❌ 게임 시작 버튼 클릭 실패: {e}"
