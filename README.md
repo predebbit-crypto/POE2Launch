@@ -7,6 +7,11 @@ Path of Exile 2 다음 게임 사이트 자동 로그인 런처
 1. ✅ https://pathofexile2.game.daum.net/ 자동 접속
 2. ✅ 저장된 다음 계정으로 자동 로그인
 3. ✅ 로그인 완료 후 '게임시작' 버튼 자동 클릭
+4. ✅ 간편한 계정 설정 도구 포함 (POE2_Setup.exe)
+
+## 📚 문서
+
+- **[상세 설치 가이드](SETUP_GUIDE.md)** - 처음 사용자를 위한 자세한 안내서
 
 ## 사용 방법
 
@@ -33,6 +38,15 @@ chmod +x build.sh
 
 ### 3단계: 설정
 
+#### 방법 1: POE2_Setup.exe 사용 (권장) ⭐
+
+1. `dist` 폴더로 이동
+2. `POE2_Setup.exe` 더블클릭
+3. 안내에 따라 다음 아이디와 비밀번호 입력
+4. 완료!
+
+#### 방법 2: 수동으로 설정
+
 1. `dist` 폴더로 이동
 2. `config.json` 파일을 텍스트 에디터로 열기
 3. 다음 계정 정보 입력:
@@ -47,6 +61,8 @@ chmod +x build.sh
 ⚠️ **중요**:
 - `config.json` 파일에는 실제 계정 정보가 들어가므로 절대 공유하지 마세요!
 - 파일은 평문으로 저장되니 보안에 주의하세요.
+
+📖 **자세한 설정 방법은 [SETUP_GUIDE.md](SETUP_GUIDE.md)를 참고하세요**
 
 ### 4단계: 실행
 
@@ -99,14 +115,17 @@ python poe2_launcher.py
 ```
 POE2Launch/
 ├── poe2_launcher.py      # 메인 런처 스크립트
+├── setup_config.py       # 계정 설정 도구 스크립트
 ├── requirements.txt      # Python 의존성
 ├── config.json.example   # 설정 파일 예시
 ├── build.bat            # Windows 빌드 스크립트
 ├── build.sh             # Linux/Mac 빌드 스크립트
-├── README.md            # 이 파일
+├── README.md            # 이 파일 (간단 가이드)
+├── SETUP_GUIDE.md       # 상세 설치/설정 가이드
 └── dist/                # 빌드된 실행 파일 (빌드 후 생성)
-    ├── POE2_Launcher.exe  # Windows 실행 파일
-    └── config.json        # 계정 설정 파일
+    ├── POE2_Launcher.exe  # 메인 런처
+    ├── POE2_Setup.exe     # 계정 설정 도구
+    └── config.json        # 계정 설정 파일 (사용자 생성)
 ```
 
 ## 주의사항
