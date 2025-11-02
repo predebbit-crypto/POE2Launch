@@ -264,13 +264,13 @@ class POE2Launcher:
                 logging.warning("확인 버튼을 찾을 수 없음, 바로 로그인 진행")
                 time.sleep(1)
 
-            # 아이디 입력
+            # 아이디 입력 (성공한 선택자를 우선순위로)
             id_input_selectors = [
+                "//input[@type='text']",  # 성공한 선택자 1순위
                 "//input[@name='id']",
                 "//input[@id='id']",
                 "//input[@name='username']",
                 "//input[@id='username']",
-                "//input[@type='text']",
                 "//input[@placeholder*='아이디']",
                 "//input[@placeholder*='ID']",
                 "//input[contains(@class, 'input_id')]",
@@ -281,13 +281,14 @@ class POE2Launcher:
             for selector in id_input_selectors:
                 try:
                     logging.info(f"아이디 입력 시도: {selector}")
-                    id_input = self.wait.until(
+                    # 대기 시간을 5초로 단축 (성공한 선택자가 첫 번째이므로)
+                    id_input = WebDriverWait(self.driver, 5).until(
                         EC.presence_of_element_located((By.XPATH, selector))
                     )
                     id_input.clear()
                     id_input.send_keys(self.config['username'])
                     print("✅ 아이디 입력 완료")
-                    logging.info("아이디 입력 성공")
+                    logging.info(f"아이디 입력 성공 - 선택자: {selector}")
                     id_entered = True
                     break
                 except Exception as e:
@@ -298,15 +299,15 @@ class POE2Launcher:
                 print("⚠️  아이디 입력란을 찾을 수 없습니다.")
                 logging.warning("아이디 입력란을 찾을 수 없음")
 
-            time.sleep(1)
+            time.sleep(0.5)
 
-            # 비밀번호 입력
+            # 비밀번호 입력 (성공한 선택자를 우선순위로)
             pw_input_selectors = [
+                "//input[@name='password']",  # 성공한 선택자 1순위
+                "//input[@type='password']",
                 "//input[@name='pw']",
-                "//input[@name='password']",
                 "//input[@id='password']",
                 "//input[@id='pw']",
-                "//input[@type='password']",
                 "//input[@placeholder*='비밀번호']",
                 "//input[@placeholder*='Password']",
                 "//input[contains(@class, 'input_pw')]",
@@ -317,11 +318,13 @@ class POE2Launcher:
             for selector in pw_input_selectors:
                 try:
                     logging.info(f"비밀번호 입력 시도: {selector}")
-                    pw_input = self.driver.find_element(By.XPATH, selector)
+                    pw_input = WebDriverWait(self.driver, 3).until(
+                        EC.presence_of_element_located((By.XPATH, selector))
+                    )
                     pw_input.clear()
                     pw_input.send_keys(self.config['password'])
                     print("✅ 비밀번호 입력 완료")
-                    logging.info("비밀번호 입력 성공")
+                    logging.info(f"비밀번호 입력 성공 - 선택자: {selector}")
                     pw_entered = True
                     break
                 except Exception as e:
@@ -332,11 +335,11 @@ class POE2Launcher:
                 print("⚠️  비밀번호 입력란을 찾을 수 없습니다.")
                 logging.warning("비밀번호 입력란을 찾을 수 없음")
 
-            time.sleep(1)
+            time.sleep(0.5)
 
-            # 로그인 버튼 클릭
+            # 로그인 버튼 클릭 (성공한 선택자가 이미 첫 번째)
             submit_selectors = [
-                "//button[@type='submit']",
+                "//button[@type='submit']",  # 성공한 선택자 1순위
                 "//button[contains(text(), '로그인')]",
                 "//a[contains(text(), '로그인')]",
                 "//input[@type='submit']",
@@ -350,7 +353,9 @@ class POE2Launcher:
             for selector in submit_selectors:
                 try:
                     logging.info(f"로그인 버튼 클릭 시도: {selector}")
-                    submit_btn = self.driver.find_element(By.XPATH, selector)
+                    submit_btn = WebDriverWait(self.driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, selector))
+                    )
                     submit_btn.click()
                     print("✅ 로그인 버튼 클릭")
                     logging.info("로그인 버튼 클릭 성공")
@@ -376,7 +381,7 @@ class POE2Launcher:
             # 로그인 완료 대기
             print("⏳ 로그인 처리 대기 중...")
             logging.info("로그인 처리 대기")
-            time.sleep(5)
+            time.sleep(3)
 
             # 메인 창으로 돌아가기 (팝업이었다면)
             if len(self.driver.window_handles) > 1:
@@ -387,6 +392,10 @@ class POE2Launcher:
             print("✅ 로그인 완료")
             logging.info("로그인 프로세스 완료")
 
+            # DaumGamestarter 허용 대화상자 처리
+            time.sleep(2)
+            self.allow_daum_gamestarter()
+
         except Exception as e:
             error_msg = f"❌ 로그인 실패: {e}"
             print(error_msg)
@@ -394,6 +403,65 @@ class POE2Launcher:
             logging.error(traceback.format_exc())
             print("⚠️  수동으로 로그인해주세요. 30초 대기합니다...")
             time.sleep(30)
+
+    def allow_daum_gamestarter(self):
+        """DaumGamestarter 앱 실행 허용"""
+        print("🎮 DaumGamestarter 실행 허용 확인 중...")
+        logging.info("DaumGamestarter 허용 대화상자 찾기 시작")
+
+        try:
+            # DaumGamestarter 허용 대화상자의 확인 버튼 찾기
+            allow_selectors = [
+                "//button[contains(text(), '확인')]",
+                "//button[contains(text(), '허용')]",
+                "//button[contains(text(), 'Allow')]",
+                "//button[contains(text(), 'OK')]",
+                "//a[contains(text(), '확인')]",
+                "//a[contains(text(), '허용')]",
+                "//input[@type='button' and contains(@value, '확인')]",
+                "//button[@type='button' and contains(text(), '확인')]",
+                "//button[contains(@class, 'confirm')]",
+                "//button[contains(@class, 'allow')]",
+                "//div[contains(@class, 'confirm')]//button",
+                "//div[contains(text(), 'DaumGamestarter')]/..//button[contains(text(), '확인')]",
+                "//div[contains(text(), 'DaumGamestarter')]/..//button",
+                "//button[@id='allowBtn']",
+                "//button[@id='confirmBtn']"
+            ]
+
+            allow_clicked = False
+            for selector in allow_selectors:
+                try:
+                    logging.info(f"DaumGamestarter 허용 버튼 시도: {selector}")
+                    allow_btn = WebDriverWait(self.driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, selector))
+                    )
+                    # JavaScript로 클릭
+                    self.driver.execute_script("arguments[0].click();", allow_btn)
+                    print("✅ DaumGamestarter 실행 허용 완료")
+                    logging.info(f"DaumGamestarter 허용 성공 - 선택자: {selector}")
+                    allow_clicked = True
+                    break
+                except Exception as e:
+                    logging.debug(f"DaumGamestarter 허용 버튼 시도 실패: {selector} - {e}")
+                    continue
+
+            if not allow_clicked:
+                print("⚠️  DaumGamestarter 허용 대화상자를 찾을 수 없습니다.")
+                print("💡 이미 허용되었거나 수동으로 허용해주세요.")
+                logging.warning("DaumGamestarter 허용 대화상자를 찾을 수 없음")
+            else:
+                # 게임 런처 실행 대기
+                print("⏳ 게임 런처 실행 대기 중...")
+                logging.info("게임 런처 실행 대기")
+                time.sleep(2)
+
+        except Exception as e:
+            error_msg = f"⚠️  DaumGamestarter 허용 처리 중 오류: {e}"
+            print(error_msg)
+            logging.error(error_msg)
+            logging.error(traceback.format_exc())
+            print("💡 수동으로 허용해주세요.")
 
     def click_game_start(self):
         """게임 시작 버튼 클릭"""
