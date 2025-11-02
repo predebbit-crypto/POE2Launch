@@ -35,7 +35,45 @@ POE2_Setup.exe
 
 ---
 
-### 원인 2: Chrome 브라우저 문제
+### 원인 2: WebDriver 캐시 문제 ⭐ (가장 흔한 문제!)
+
+**증상:**
+- 로그에 `[WinError 193] %1은(는) 올바른 Win32 응용 프로그램이 아닙니다` 오류
+- "브라우저 설정 실패" 메시지
+- Chrome은 있지만 시작이 안 됨
+
+**원인:**
+WebDriver Manager가 캐시에서 잘못된 파일을 실행 파일로 인식
+
+**해결 방법 (두 가지 중 선택):**
+
+#### 방법 1: 캐시 삭제 도구 사용 (권장) ⭐
+```cmd
+cd C:\Users\sheli\Downloads\POE2Launch
+clear_webdriver_cache.bat
+```
+
+프로그램이 묻는 질문에 `y` 입력 후 Enter
+
+#### 방법 2: 수동 삭제
+명령 프롬프트에서:
+```cmd
+rmdir /s /q "%USERPROFILE%\.wdm"
+```
+
+**삭제 후:**
+```cmd
+cd C:\Users\sheli\Downloads\POE2Launch
+build.bat
+cd dist
+POE2_Launcher.exe
+```
+
+WebDriver가 자동으로 다시 다운로드됩니다.
+
+---
+
+### 원인 3: Chrome 브라우저 문제
 
 **증상:**
 - "브라우저 설정 실패" 메시지
@@ -57,9 +95,16 @@ Chrome 실행 → 우측 상단 ⋮ → 도움말 → Chrome 정보
 ```
 
 #### C. WebDriver 캐시 삭제
+이미 위의 "원인 2"에서 해결했다면 스킵
+
 ```cmd
 # WebDriver 캐시 폴더 삭제
 rmdir /s /q "%USERPROFILE%\.wdm"
+```
+
+또는:
+```cmd
+clear_webdriver_cache.bat
 ```
 
 그 다음 POE2_Launcher.exe 다시 실행

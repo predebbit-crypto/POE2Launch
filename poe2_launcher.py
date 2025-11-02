@@ -108,13 +108,52 @@ class POE2Launcher:
         chrome_options.add_experimental_option('useAutomationExtension', False)
 
         try:
-            print("📥 Chrome WebDriver 다운로드 중... (처음 실행 시 시간이 걸릴 수 있습니다)")
-            logging.info("ChromeDriverManager로 드라이버 설치 시도")
-            service = Service(ChromeDriverManager().install())
+            print("📥 Chrome WebDriver 준비 중... (처음 실행 시 시간이 걸릴 수 있습니다)")
 
-            print("🌐 Chrome 브라우저 시작 중...")
-            logging.info("Chrome 브라우저 시작")
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # Selenium 4.6+는 자체 Selenium Manager를 사용하여 드라이버 관리
+            # Service()를 인자 없이 호출하면 자동으로 드라이버를 찾거나 다운로드
+            try:
+                logging.info("Selenium Manager로 드라이버 자동 설정 시도")
+                service = Service()
+
+                print("🌐 Chrome 브라우저 시작 중...")
+                logging.info("Chrome 브라우저 시작")
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+
+            except Exception as selenium_error:
+                # Selenium Manager 실패 시 ChromeDriverManager로 폴백
+                logging.warning(f"Selenium Manager 실패: {selenium_error}")
+                logging.info("ChromeDriverManager로 드라이버 설치 시도 (폴백)")
+                print("🔄 대체 방법으로 WebDriver 다운로드 중...")
+
+                # 캐시 문제를 피하기 위해 최신 버전 강제 다운로드
+                from webdriver_manager.chrome import ChromeDriverManager
+                driver_path = ChromeDriverManager().install()
+                logging.info(f"드라이버 경로: {driver_path}")
+
+                # 경로가 올바른 chromedriver.exe를 가리키는지 확인
+                if not driver_path.endswith('chromedriver.exe'):
+                    # chromedriver.exe 파일 찾기
+                    import glob
+                    driver_dir = os.path.dirname(driver_path)
+                    possible_drivers = glob.glob(os.path.join(driver_dir, '**/chromedriver.exe'), recursive=True)
+                    if possible_drivers:
+                        driver_path = possible_drivers[0]
+                        logging.info(f"올바른 드라이버 파일 찾음: {driver_path}")
+                    else:
+                        # 상위 디렉토리에서 찾기
+                        parent_dir = os.path.dirname(driver_dir)
+                        possible_drivers = glob.glob(os.path.join(parent_dir, '**/chromedriver.exe'), recursive=True)
+                        if possible_drivers:
+                            driver_path = possible_drivers[0]
+                            logging.info(f"상위 디렉토리에서 드라이버 찾음: {driver_path}")
+
+                service = Service(driver_path)
+
+                print("🌐 Chrome 브라우저 시작 중...")
+                logging.info("Chrome 브라우저 시작")
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+
             self.wait = WebDriverWait(self.driver, 20)
 
             # 자동화 감지 방지 스크립트
@@ -122,6 +161,7 @@ class POE2Launcher:
 
             print("✅ 브라우저 설정 완료")
             logging.info("Chrome 브라우저 설정 완료")
+
         except Exception as e:
             error_msg = f"❌ 브라우저 설정 실패: {e}"
             print(error_msg)
@@ -129,10 +169,12 @@ class POE2Launcher:
             logging.error(traceback.format_exc())
 
             print("\n💡 문제 해결 방법:")
-            print("1. Chrome 브라우저가 설치되어 있는지 확인하세요")
-            print("2. Chrome을 최신 버전으로 업데이트하세요")
-            print("3. 인터넷 연결을 확인하세요 (WebDriver 다운로드 필요)")
-            print("4. 백신 프로그램이 차단하고 있는지 확인하세요")
+            print("1. WebDriver 캐시 삭제:")
+            print('   명령 프롬프트에서: rmdir /s /q "%USERPROFILE%\\.wdm"')
+            print("2. Chrome 브라우저가 설치되어 있는지 확인하세요")
+            print("3. Chrome을 최신 버전으로 업데이트하세요")
+            print("4. 인터넷 연결을 확인하세요")
+            print("5. 백신 프로그램이 차단하고 있는지 확인하세요")
             print(f"\n📝 자세한 로그는 다음 파일을 확인하세요: {LOG_FILE}")
 
             input("\n계속하려면 Enter를 누르세요...")
