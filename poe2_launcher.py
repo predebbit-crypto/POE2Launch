@@ -137,10 +137,19 @@ class POE2Launcher:
                 logging.info("ChromeDriverManager로 드라이버 설치 시도 (폴백)")
                 print("🔄 대체 방법으로 WebDriver 다운로드 중...")
 
-                # 캐시 문제를 피하기 위해 최신 버전 강제 다운로드
+                # Chrome 141 버전용 ChromeDriver 명시적 지정
                 from webdriver_manager.chrome import ChromeDriverManager
-                driver_path = ChromeDriverManager().install()
-                logging.info(f"드라이버 경로: {driver_path}")
+                from webdriver_manager.core.os_manager import ChromeType
+
+                try:
+                    # Chrome 버전 141에 맞는 드라이버 다운로드
+                    logging.info("Chrome 141 버전용 드라이버 다운로드 시도")
+                    driver_path = ChromeDriverManager(driver_version="141.0.7390.170").install()
+                    logging.info(f"드라이버 경로: {driver_path}")
+                except Exception as version_error:
+                    logging.warning(f"특정 버전 다운로드 실패: {version_error}, 최신 버전 시도")
+                    driver_path = ChromeDriverManager().install()
+                    logging.info(f"드라이버 경로: {driver_path}")
 
                 # 경로가 올바른 chromedriver.exe를 가리키는지 확인
                 if not driver_path.endswith('chromedriver.exe'):
