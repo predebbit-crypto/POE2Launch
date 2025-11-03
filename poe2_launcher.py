@@ -96,27 +96,7 @@ class POE2Launcher:
         logging.info("Chrome 드라이버 설정 시작")
 
         chrome_options = Options()
-        # 기본 설정만 사용
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-
-        # Chrome 실행 파일 경로 명시 (일반적인 설치 경로들)
-        chrome_paths = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
-        ]
-
-        for chrome_path in chrome_paths:
-            if os.path.exists(chrome_path):
-                chrome_options.binary_location = chrome_path
-                logging.info(f"Chrome 실행 파일 찾음: {chrome_path}")
-                print(f"✅ Chrome 경로: {chrome_path}")
-                break
-
-        # 자동화 감지 방지
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
+        # 완전히 기본 설정 (아무 플래그도 없음)
 
         try:
             print("📥 Chrome WebDriver 준비 중... (처음 실행 시 시간이 걸릴 수 있습니다)")
@@ -137,19 +117,10 @@ class POE2Launcher:
                 logging.info("ChromeDriverManager로 드라이버 설치 시도 (폴백)")
                 print("🔄 대체 방법으로 WebDriver 다운로드 중...")
 
-                # Chrome 141 버전용 ChromeDriver 명시적 지정
+                # 자동으로 Chrome 버전 감지하여 맞는 드라이버 다운로드
                 from webdriver_manager.chrome import ChromeDriverManager
-                from webdriver_manager.core.os_manager import ChromeType
-
-                try:
-                    # Chrome 버전 141에 맞는 드라이버 다운로드
-                    logging.info("Chrome 141 버전용 드라이버 다운로드 시도")
-                    driver_path = ChromeDriverManager(driver_version="141.0.7390.170").install()
-                    logging.info(f"드라이버 경로: {driver_path}")
-                except Exception as version_error:
-                    logging.warning(f"특정 버전 다운로드 실패: {version_error}, 최신 버전 시도")
-                    driver_path = ChromeDriverManager().install()
-                    logging.info(f"드라이버 경로: {driver_path}")
+                driver_path = ChromeDriverManager().install()
+                logging.info(f"드라이버 경로: {driver_path}")
 
                 # 경로가 올바른 chromedriver.exe를 가리키는지 확인
                 if not driver_path.endswith('chromedriver.exe'):
