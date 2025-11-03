@@ -96,9 +96,23 @@ class POE2Launcher:
         logging.info("Chrome 드라이버 설정 시작")
 
         chrome_options = Options()
-        # 기본 설정만 사용 (보안 플래그 제거)
+        # 기본 설정만 사용
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
+
+        # Chrome 실행 파일 경로 명시 (일반적인 설치 경로들)
+        chrome_paths = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+        ]
+
+        for chrome_path in chrome_paths:
+            if os.path.exists(chrome_path):
+                chrome_options.binary_location = chrome_path
+                logging.info(f"Chrome 실행 파일 찾음: {chrome_path}")
+                print(f"✅ Chrome 경로: {chrome_path}")
+                break
 
         # 자동화 감지 방지
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
