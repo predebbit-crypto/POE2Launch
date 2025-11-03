@@ -103,9 +103,26 @@ class POE2Launcher:
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
 
+        # HTTP/HTTPS 보안 설정 완화 (Steam 외부 프로그램 연결용)
+        chrome_options.add_argument('--allow-running-insecure-content')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--disable-web-security')
+        chrome_options.add_argument('--allow-insecure-localhost')
+        chrome_options.add_argument('--disable-features=InsecureDownloadWarnings')
+
+        # 특정 URL을 안전한 출처로 처리
+        chrome_options.add_argument('--unsafely-treat-insecure-origin-as-secure=http://pathofexile2.game.daum.net,https://pathofexile2.game.daum.net')
+
         # 자동화 감지 방지
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
+
+        # 보안 경고 무시
+        prefs = {
+            "profile.default_content_setting_values.mixed_content": 1,
+            "profile.default_content_settings.mixed_content": 1
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
 
         try:
             print("📥 Chrome WebDriver 준비 중... (처음 실행 시 시간이 걸릴 수 있습니다)")
