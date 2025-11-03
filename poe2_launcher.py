@@ -9,6 +9,8 @@ import sys
 import time
 import traceback
 import logging
+import tempfile
+import shutil
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -48,6 +50,7 @@ class POE2Launcher:
         self.config = self.load_config(config_path)
         self.driver = None
         self.wait = None
+        self.temp_profile_dir = None
 
     def load_config(self, config_path):
         """설정 파일 로드"""
@@ -95,6 +98,10 @@ class POE2Launcher:
         print("🔧 브라우저 설정 중...")
         logging.info("Chrome 드라이버 설정 시작")
 
+        # 임시 프로필 디렉토리 생성 (--disable-web-security 사용 시 필수)
+        self.temp_profile_dir = tempfile.mkdtemp(prefix="poe2_chrome_")
+        logging.info(f"임시 Chrome 프로필 생성: {self.temp_profile_dir}")
+
         chrome_options = Options()
         # 브라우저를 보이게 설정
         # chrome_options.add_argument('--headless')  # 숨기려면 주석 해제
@@ -102,6 +109,9 @@ class POE2Launcher:
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
+
+        # 임시 프로필 디렉토리 사용 (--disable-web-security 사용 시 필수)
+        chrome_options.add_argument(f'--user-data-dir={self.temp_profile_dir}')
 
         # HTTP/HTTPS 보안 설정 완화 (Steam 외부 프로그램 연결용)
         chrome_options.add_argument('--allow-running-insecure-content')
@@ -816,9 +826,19 @@ class POE2Launcher:
             print("\n🧹 브라우저 종료 중...")
             try:
                 self.driver.quit()
-                print("✅ 정리 완료")
+                print("✅ 브라우저 종료 완료")
             except:
                 pass
+
+        # 임시 프로필 디렉토리 삭제
+        if self.temp_profile_dir and os.path.exists(self.temp_profile_dir):
+            try:
+                print("🧹 임시 프로필 삭제 중...")
+                logging.info(f"임시 프로필 삭제: {self.temp_profile_dir}")
+                shutil.rmtree(self.temp_profile_dir, ignore_errors=True)
+                print("✅ 정리 완료")
+            except Exception as e:
+                logging.warning(f"임시 프로필 삭제 실패: {e}")
 
 
 def main():
