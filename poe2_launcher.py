@@ -96,35 +96,13 @@ class POE2Launcher:
         logging.info("Chrome 드라이버 설정 시작")
 
         chrome_options = Options()
-        # 브라우저를 보이게 설정
-        # chrome_options.add_argument('--headless')  # 숨기려면 주석 해제
+        # 기본 설정만 사용 (보안 플래그 제거)
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--window-size=1920,1080')
-
-        # HTTP/HTTPS 보안 설정 완화 (Steam 외부 프로그램 연결용)
-        # --disable-web-security는 제거 (Chrome 시작 실패 원인)
-        chrome_options.add_argument('--allow-running-insecure-content')
-        chrome_options.add_argument('--ignore-certificate-errors')
-        chrome_options.add_argument('--allow-insecure-localhost')
-        chrome_options.add_argument('--disable-features=InsecureDownloadWarnings')
-
-        # 특정 URL을 안전한 출처로 처리
-        chrome_options.add_argument('--unsafely-treat-insecure-origin-as-secure=http://pathofexile2.game.daum.net,https://pathofexile2.game.daum.net')
 
         # 자동화 감지 방지
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
-
-        # 보안 경고 무시 및 혼합 콘텐츠 허용
-        prefs = {
-            "profile.default_content_setting_values.mixed_content": 1,
-            "profile.default_content_settings.mixed_content": 1,
-            "profile.default_content_setting_values.notifications": 2,  # 알림 차단
-            "profile.default_content_setting_values.media_stream": 1,  # 미디어 허용
-        }
-        chrome_options.add_experimental_option("prefs", prefs)
 
         try:
             print("📥 Chrome WebDriver 준비 중... (처음 실행 시 시간이 걸릴 수 있습니다)")
