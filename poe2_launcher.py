@@ -184,13 +184,28 @@ class POE2Launcher:
         """POE2 다음 게임 사이트 열기"""
         url = "https://pathofexile2.game.daum.net/"
         print(f"🌐 웹사이트 열기: {url}")
+        logging.info(f"웹사이트 열기: {url}")
 
         try:
             self.driver.get(url)
+
+            # HTTPS 강제 확인
+            current_url = self.driver.current_url
+            logging.info(f"현재 URL: {current_url}")
+
+            if current_url.startswith("http://"):
+                logging.warning("HTTP로 리다이렉트됨, HTTPS로 강제 변경")
+                https_url = current_url.replace("http://", "https://")
+                print(f"🔒 HTTPS로 전환: {https_url}")
+                self.driver.get(https_url)
+                current_url = self.driver.current_url
+                logging.info(f"HTTPS 전환 후 URL: {current_url}")
+
             print("✅ 웹사이트 로드 완료")
             time.sleep(2)
         except Exception as e:
             print(f"❌ 웹사이트 열기 실패: {e}")
+            logging.error(f"웹사이트 열기 실패: {e}")
             self.cleanup()
             sys.exit(1)
 
@@ -405,56 +420,186 @@ class POE2Launcher:
             time.sleep(30)
 
     def allow_daum_gamestarter(self):
-        """DaumGamestarter 앱 실행 허용"""
+        """DaumGamestarter 앱 실행 허용 (개선된 버전)"""
         print("🎮 DaumGamestarter 실행 허용 확인 중...")
         logging.info("DaumGamestarter 허용 대화상자 찾기 시작")
 
         try:
-            # DaumGamestarter 허용 대화상자의 확인 버튼 찾기
+            # 대기 시간 추가 (다이얼로그가 나타날 시간)
+            time.sleep(2)
+
+            # 1단계: 브라우저 alert/confirm 다이얼로그 처리
+            try:
+                logging.info("브라우저 alert/confirm 다이얼로그 확인 중...")
+                alert = self.driver.switch_to.alert
+                alert_text = alert.text
+                logging.info(f"브라우저 alert 발견: '{alert_text}'")
+                if 'DaumGamestarter' in alert_text or '허용' in alert_text or '확인' in alert_text:
+                    alert.accept()
+                    print("✅ 브라우저 다이얼로그 허용 완료")
+                    logging.info("브라우저 alert 허용 성공")
+                    time.sleep(2)
+                    return
+            except Exception:
+                logging.debug("브라우저 alert 없음 (정상)")
+
+            # 2단계: 스크린샷 캡처 (디버깅용)
+            try:
+                log_dir = os.path.dirname(LOG_FILE)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                screenshot_path = os.path.join(log_dir, f'daum_dialog_{timestamp}.png')
+                self.driver.save_screenshot(screenshot_path)
+                print(f"📸 스크린샷 저장됨: {screenshot_path}")
+                logging.info(f"스크린샷 저장: {screenshot_path}")
+            except Exception as e:
+                logging.warning(f"스크린샷 저장 실패: {e}")
+
+            # 3단계: 페이지 텍스트 로깅 (디버깅용)
+            try:
+                body_text = self.driver.find_element(By.TAG_NAME, "body").text
+                # 처음 500자만 로깅
+                logging.info(f"페이지 텍스트: {body_text[:500]}")
+                if 'DaumGamestarter' in body_text:
+                    logging.info("페이지에 'DaumGamestarter' 텍스트 발견!")
+            except Exception as e:
+                logging.warning(f"페이지 텍스트 로깅 실패: {e}")
+
+            # 4단계: JavaScript로 모든 요소 스캔 (게임 시작 버튼 방식과 유사)
+            print("🔍 JavaScript로 DaumGamestarter 허용 버튼 스캔 중...")
+            logging.info("JavaScript 기반 버튼 스캔 시작")
+
+            script = """
+            function findAllowButton() {
+                // 찾을 키워드들
+                const keywords = [
+                    'DaumGamestarter', 'daum', 'Daum',
+                    '확인', '허용', 'Allow', 'OK', 'ok', 'Yes', 'yes',
+                    '실행', '계속', 'Continue', 'Proceed'
+                ];
+
+                const allElements = document.querySelectorAll('*');
+                const possibleButtons = [];
+
+                // 모든 요소 검사
+                for (let element of allElements) {
+                    const text = (element.textContent || element.innerText || '').trim();
+                    const hasKeyword = keywords.some(keyword => text.includes(keyword));
+
+                    // DaumGamestarter 관련 텍스트가 있는 요소의 부모/자식에서 버튼 찾기
+                    if (text.includes('DaumGamestarter') || text.includes('daum')) {
+                        // 같은 요소나 부모 요소에서 버튼 찾기
+                        let parent = element.parentElement;
+                        for (let i = 0; i < 3 && parent; i++) {
+                            const buttons = parent.querySelectorAll('button, a, input[type="button"], input[type="submit"]');
+                            buttons.forEach(btn => possibleButtons.push({element: btn, reason: 'near DaumGamestarter text'}));
+                            parent = parent.parentElement;
+                        }
+                    }
+
+                    // 클릭 가능하고 키워드를 포함한 요소
+                    if (hasKeyword) {
+                        if (element.tagName === 'BUTTON' ||
+                            element.tagName === 'A' ||
+                            element.tagName === 'INPUT' ||
+                            element.onclick ||
+                            element.getAttribute('onclick') ||
+                            window.getComputedStyle(element).cursor === 'pointer') {
+                            possibleButtons.push({element: element, reason: 'clickable with keyword'});
+                        }
+                    }
+                }
+
+                // 첫 번째 후보 반환
+                return possibleButtons.length > 0 ? possibleButtons[0].element : null;
+            }
+            return findAllowButton();
+            """
+
+            allow_element = self.driver.execute_script(script)
+
+            if allow_element:
+                print("✅ JavaScript로 허용 버튼 발견!")
+                logging.info("JavaScript로 허용 버튼 찾기 성공")
+                try:
+                    # JavaScript로 클릭
+                    self.driver.execute_script("arguments[0].click();", allow_element)
+                    print("✅ DaumGamestarter 실행 허용 완료")
+                    logging.info("JavaScript 클릭 성공")
+                    time.sleep(2)
+                    return
+                except Exception as e:
+                    logging.warning(f"JavaScript 클릭 실패, 일반 클릭 시도: {e}")
+                    try:
+                        allow_element.click()
+                        print("✅ DaumGamestarter 실행 허용 완료")
+                        logging.info("일반 클릭 성공")
+                        time.sleep(2)
+                        return
+                    except Exception as e2:
+                        logging.error(f"일반 클릭도 실패: {e2}")
+
+            # 5단계: 팝업 창 확인
+            window_handles = self.driver.window_handles
+            if len(window_handles) > 1:
+                logging.info(f"팝업 창 발견: {len(window_handles)}개, 마지막 창으로 전환 시도")
+                self.driver.switch_to.window(window_handles[-1])
+                time.sleep(1)
+                # 팝업 창에서 다시 스캔
+                allow_element = self.driver.execute_script(script)
+                if allow_element:
+                    print("✅ 팝업 창에서 허용 버튼 발견!")
+                    logging.info("팝업 창에서 허용 버튼 찾기 성공")
+                    self.driver.execute_script("arguments[0].click();", allow_element)
+                    print("✅ DaumGamestarter 실행 허용 완료")
+                    logging.info("팝업 창에서 클릭 성공")
+                    time.sleep(2)
+                    # 메인 창으로 복귀
+                    if len(self.driver.window_handles) > 0:
+                        self.driver.switch_to.window(self.driver.window_handles[0])
+                    return
+
+            # 6단계: XPath 선택자로 재시도 (기존 방식)
+            print("🔄 XPath 선택자로 재시도...")
+            logging.info("XPath 선택자로 버튼 찾기 시도")
+
             allow_selectors = [
                 "//button[contains(text(), '확인')]",
                 "//button[contains(text(), '허용')]",
                 "//button[contains(text(), 'Allow')]",
-                "//button[contains(text(), 'OK')]",
                 "//a[contains(text(), '확인')]",
                 "//a[contains(text(), '허용')]",
-                "//input[@type='button' and contains(@value, '확인')]",
-                "//button[@type='button' and contains(text(), '확인')]",
                 "//button[contains(@class, 'confirm')]",
                 "//button[contains(@class, 'allow')]",
-                "//div[contains(@class, 'confirm')]//button",
-                "//div[contains(text(), 'DaumGamestarter')]/..//button[contains(text(), '확인')]",
-                "//div[contains(text(), 'DaumGamestarter')]/..//button",
-                "//button[@id='allowBtn']",
-                "//button[@id='confirmBtn']"
+                "//input[@type='button']",
+                "//input[@type='submit']",
+                "//button[@type='button']",
+                "//button[@type='submit']"
             ]
 
-            allow_clicked = False
             for selector in allow_selectors:
                 try:
-                    logging.info(f"DaumGamestarter 허용 버튼 시도: {selector}")
-                    allow_btn = WebDriverWait(self.driver, 3).until(
+                    logging.info(f"XPath 선택자 시도: {selector}")
+                    allow_btn = WebDriverWait(self.driver, 2).until(
                         EC.element_to_be_clickable((By.XPATH, selector))
                     )
-                    # JavaScript로 클릭
                     self.driver.execute_script("arguments[0].click();", allow_btn)
                     print("✅ DaumGamestarter 실행 허용 완료")
-                    logging.info(f"DaumGamestarter 허용 성공 - 선택자: {selector}")
-                    allow_clicked = True
-                    break
+                    logging.info(f"XPath 클릭 성공 - 선택자: {selector}")
+                    time.sleep(2)
+                    return
                 except Exception as e:
-                    logging.debug(f"DaumGamestarter 허용 버튼 시도 실패: {selector} - {e}")
+                    logging.debug(f"XPath 선택자 실패: {selector}")
                     continue
 
-            if not allow_clicked:
-                print("⚠️  DaumGamestarter 허용 대화상자를 찾을 수 없습니다.")
-                print("💡 이미 허용되었거나 수동으로 허용해주세요.")
-                logging.warning("DaumGamestarter 허용 대화상자를 찾을 수 없음")
-            else:
-                # 게임 런처 실행 대기
-                print("⏳ 게임 런처 실행 대기 중...")
-                logging.info("게임 런처 실행 대기")
-                time.sleep(2)
+            # 모든 방법 실패
+            print("⚠️  DaumGamestarter 허용 대화상자를 찾을 수 없습니다.")
+            print("💡 이미 허용되었거나 수동으로 허용해주세요.")
+            print(f"📸 스크린샷을 확인하세요: {screenshot_path if 'screenshot_path' in locals() else 'N/A'}")
+            logging.warning("모든 방법으로 DaumGamestarter 대화상자를 찾을 수 없음")
+
+            # 수동 허용을 위한 대기 시간
+            print("⏳ 수동으로 허용할 시간 - 10초 대기 중...")
+            time.sleep(10)
 
         except Exception as e:
             error_msg = f"⚠️  DaumGamestarter 허용 처리 중 오류: {e}"
@@ -462,6 +607,7 @@ class POE2Launcher:
             logging.error(error_msg)
             logging.error(traceback.format_exc())
             print("💡 수동으로 허용해주세요.")
+            time.sleep(5)
 
     def click_game_start(self):
         """게임 시작 버튼 클릭"""
