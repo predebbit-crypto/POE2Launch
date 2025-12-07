@@ -314,56 +314,97 @@ class POE2Launcher:
             logging.info("reCAPTCHA 처리 시작")
 
             try:
-                # reCAPTCHA iframe 찾기
+                # reCAPTCHA iframe 찾기 (여러 방법 시도)
                 recaptcha_iframe = None
                 iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
-                for iframe in iframes:
+                logging.info(f"총 {len(iframes)}개의 iframe 발견")
+
+                for i, iframe in enumerate(iframes):
                     src = iframe.get_attribute("src") or ""
                     title = iframe.get_attribute("title") or ""
-                    if "recaptcha" in src.lower() or "recaptcha" in title.lower():
+                    name = iframe.get_attribute("name") or ""
+                    logging.info(f"iframe {i}: src={src[:50]}, title={title}, name={name}")
+
+                    if "recaptcha" in src.lower() or "recaptcha" in title.lower() or "recaptcha" in name.lower():
                         recaptcha_iframe = iframe
-                        logging.info(f"reCAPTCHA iframe 발견: src={src}, title={title}")
+                        logging.info(f"✅ reCAPTCHA iframe 발견 (index {i})")
                         break
 
                 if recaptcha_iframe:
                     # reCAPTCHA iframe으로 전환
                     self.driver.switch_to.frame(recaptcha_iframe)
-                    logging.info("reCAPTCHA iframe으로 전환")
+                    logging.info("reCAPTCHA iframe으로 전환 완료")
+                    time.sleep(1)
 
-                    # "로봇이 아닙니다" 체크박스 클릭
-                    try:
-                        checkbox = WebDriverWait(self.driver, 5).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, ".recaptcha-checkbox-border"))
-                        )
-                        checkbox.click()
-                        print("✅ reCAPTCHA 체크박스 클릭 완료")
-                        logging.info("reCAPTCHA 체크박스 클릭 성공")
-                        time.sleep(2)  # reCAPTCHA 처리 대기
-                    except Exception as e:
-                        logging.warning(f"reCAPTCHA 체크박스 클릭 실패: {e}")
+                    # "로봇이 아닙니다" 체크박스 클릭 (여러 선택자 시도)
+                    checkbox_selectors = [
+                        "#recaptcha-anchor",
+                        ".recaptcha-checkbox-border",
+                        ".recaptcha-checkbox",
+                        ".recaptcha-checkbox-checkmark",
+                        "div.recaptcha-checkbox-border",
+                        "span#recaptcha-anchor",
+                        "div[role='checkbox']",
+                        "span[role='checkbox']",
+                    ]
+
+                    checkbox_clicked = False
+                    for selector in checkbox_selectors:
+                        try:
+                            logging.info(f"reCAPTCHA 체크박스 시도: {selector}")
+                            # CSS 선택자 사용
+                            checkbox = WebDriverWait(self.driver, 3).until(
+                                EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                            )
+
+                            # JavaScript로 클릭 시도
+                            try:
+                                self.driver.execute_script("arguments[0].click();", checkbox)
+                                logging.info(f"✅ JavaScript 클릭 성공: {selector}")
+                            except:
+                                # 일반 클릭 시도
+                                checkbox.click()
+                                logging.info(f"✅ 일반 클릭 성공: {selector}")
+
+                            print("✅ reCAPTCHA 체크박스 클릭 완료")
+                            checkbox_clicked = True
+                            time.sleep(3)  # reCAPTCHA 검증 대기
+                            break
+
+                        except Exception as e:
+                            logging.debug(f"reCAPTCHA 선택자 실패: {selector} - {e}")
+                            continue
+
+                    if not checkbox_clicked:
+                        print("⚠️  reCAPTCHA 체크박스를 클릭할 수 없습니다. 수동으로 클릭해주세요.")
+                        logging.warning("모든 reCAPTCHA 선택자 실패")
+                        time.sleep(10)  # 수동 클릭을 위한 대기 시간
 
                     # 메인 컨텐츠로 돌아가기
                     self.driver.switch_to.default_content()
                     logging.info("메인 컨텐츠로 복귀")
 
-                    # iframe이 있었다면 다시 로그인 iframe으로 전환
+                    # 로그인 iframe으로 재전환 (있다면)
+                    time.sleep(1)
                     login_iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
                     for iframe in login_iframes:
                         src = iframe.get_attribute("src") or ""
-                        if "recaptcha" not in src.lower():
+                        if "recaptcha" not in src.lower() and "daum" in src.lower():
                             try:
                                 self.driver.switch_to.frame(iframe)
                                 logging.info("로그인 iframe으로 재전환")
                                 break
-                            except:
-                                pass
+                            except Exception as e:
+                                logging.debug(f"iframe 전환 실패: {e}")
                 else:
                     print("ℹ️  reCAPTCHA 없음, 계속 진행")
                     logging.info("reCAPTCHA iframe 없음")
 
             except Exception as e:
-                logging.warning(f"reCAPTCHA 처리 중 오류: {e}")
-                print("⚠️  reCAPTCHA 처리 건너뜀")
+                logging.error(f"reCAPTCHA 처리 중 오류: {e}")
+                logging.error(traceback.format_exc())
+                print("⚠️  reCAPTCHA 처리 실패, 수동으로 클릭해주세요.")
+                time.sleep(10)  # 수동 처리를 위한 대기
 
             time.sleep(1)
 
