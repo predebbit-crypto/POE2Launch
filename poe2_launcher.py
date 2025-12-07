@@ -309,6 +309,64 @@ class POE2Launcher:
                 logging.warning("'카카오로 로그인' 버튼을 찾을 수 없음")
                 time.sleep(1)
 
+            # reCAPTCHA "로봇이 아닙니다" 체크박스 처리
+            print("🤖 reCAPTCHA 확인 중...")
+            logging.info("reCAPTCHA 처리 시작")
+
+            try:
+                # reCAPTCHA iframe 찾기
+                recaptcha_iframe = None
+                iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+                for iframe in iframes:
+                    src = iframe.get_attribute("src") or ""
+                    title = iframe.get_attribute("title") or ""
+                    if "recaptcha" in src.lower() or "recaptcha" in title.lower():
+                        recaptcha_iframe = iframe
+                        logging.info(f"reCAPTCHA iframe 발견: src={src}, title={title}")
+                        break
+
+                if recaptcha_iframe:
+                    # reCAPTCHA iframe으로 전환
+                    self.driver.switch_to.frame(recaptcha_iframe)
+                    logging.info("reCAPTCHA iframe으로 전환")
+
+                    # "로봇이 아닙니다" 체크박스 클릭
+                    try:
+                        checkbox = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, ".recaptcha-checkbox-border"))
+                        )
+                        checkbox.click()
+                        print("✅ reCAPTCHA 체크박스 클릭 완료")
+                        logging.info("reCAPTCHA 체크박스 클릭 성공")
+                        time.sleep(2)  # reCAPTCHA 처리 대기
+                    except Exception as e:
+                        logging.warning(f"reCAPTCHA 체크박스 클릭 실패: {e}")
+
+                    # 메인 컨텐츠로 돌아가기
+                    self.driver.switch_to.default_content()
+                    logging.info("메인 컨텐츠로 복귀")
+
+                    # iframe이 있었다면 다시 로그인 iframe으로 전환
+                    login_iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+                    for iframe in login_iframes:
+                        src = iframe.get_attribute("src") or ""
+                        if "recaptcha" not in src.lower():
+                            try:
+                                self.driver.switch_to.frame(iframe)
+                                logging.info("로그인 iframe으로 재전환")
+                                break
+                            except:
+                                pass
+                else:
+                    print("ℹ️  reCAPTCHA 없음, 계속 진행")
+                    logging.info("reCAPTCHA iframe 없음")
+
+            except Exception as e:
+                logging.warning(f"reCAPTCHA 처리 중 오류: {e}")
+                print("⚠️  reCAPTCHA 처리 건너뜀")
+
+            time.sleep(1)
+
             # 아이디 입력 (성공한 선택자를 우선순위로)
             id_input_selectors = [
                 "//input[@type='text']",  # 성공한 선택자 1순위
