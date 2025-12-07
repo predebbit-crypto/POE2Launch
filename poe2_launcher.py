@@ -263,11 +263,50 @@ class POE2Launcher:
                     continue
 
             if confirm_clicked:
-                print("⏳ 로그인 입력 필드 로드 대기 중...")
+                print("⏳ 로그인 방법 선택 화면 로드 대기 중...")
                 time.sleep(2)
             else:
                 print("⚠️  확인 버튼을 찾을 수 없습니다. 이미 로그인 화면일 수 있습니다.")
                 logging.warning("확인 버튼을 찾을 수 없음, 바로 로그인 진행")
+                time.sleep(1)
+
+            # '카카오로 로그인' 버튼 클릭 (새로 추가된 단계)
+            print("🔍 '카카오로 로그인' 버튼 찾기...")
+            logging.info("'카카오로 로그인' 버튼 찾기 시작")
+
+            kakao_login_selectors = [
+                "//button[contains(text(), '카카오로 로그인')]",
+                "//a[contains(text(), '카카오로 로그인')]",
+                "//button[contains(text(), '카카오')]",
+                "//a[contains(text(), '카카오')]",
+                "//*[contains(text(), '카카오로 로그인')]",
+                "//button[contains(@class, 'kakao')]",
+                "//a[contains(@class, 'kakao')]",
+            ]
+
+            kakao_clicked = False
+            for selector in kakao_login_selectors:
+                try:
+                    logging.info(f"'카카오로 로그인' 버튼 시도: {selector}")
+                    kakao_btn = WebDriverWait(self.driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, selector))
+                    )
+                    # JavaScript로 클릭
+                    self.driver.execute_script("arguments[0].click();", kakao_btn)
+                    print("✅ '카카오로 로그인' 버튼 클릭 완료")
+                    logging.info(f"'카카오로 로그인' 버튼 클릭 성공 - 선택자: {selector}")
+                    kakao_clicked = True
+                    break
+                except Exception as e:
+                    logging.debug(f"'카카오로 로그인' 버튼 시도 실패: {selector} - {e}")
+                    continue
+
+            if kakao_clicked:
+                print("⏳ 아이디/비밀번호 입력 화면 로드 대기 중...")
+                time.sleep(2)
+            else:
+                print("⚠️  '카카오로 로그인' 버튼을 찾을 수 없습니다. 이미 입력 화면일 수 있습니다.")
+                logging.warning("'카카오로 로그인' 버튼을 찾을 수 없음")
                 time.sleep(1)
 
             # 아이디 입력 (성공한 선택자를 우선순위로)
